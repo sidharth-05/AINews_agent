@@ -10,15 +10,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main   # always resolve to latest main
-          fetch-depth: 1                           # shallow clone, faster
+          ref: main
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"                  # pin this — avoids surprise upgrades
+          python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run AI news bot
+      - name: Run bot
         run: python ai_news_bot.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
