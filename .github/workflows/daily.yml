@@ -1,43 +1,24 @@
-name: AI News Daily Bot
-
 on:
-
   schedule:
-
     - cron: "0 15 * * *"
-
   workflow_dispatch:
 
 jobs:
-
   run-bot:
-
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout repo
-
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-
-        uses: actions/setup-python@v5
-
+      - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref_name || 'main' }}   # always resolve to latest main
+          fetch-depth: 1                           # shallow clone, faster
 
-          python-version: "3.11"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"                  # pin this — avoids surprise upgrades
 
       - name: Install dependencies
-
         run: pip install -r requirements.txt
 
-      - name: Run bot
-
-        env:
-
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-
+      - name: Run AI news bot
         run: python ai_news_bot.py
