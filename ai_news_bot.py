@@ -128,7 +128,9 @@ def get_news():
 
         feed = feedparser.parse(url)
 
-        for entry in feed.entries[:6]:
+        entries = feed.entries  # 👈 take ALL, not just early ones
+
+        for entry in entries:
 
             title = clean_text(entry.get("title", ""))
 
@@ -136,21 +138,11 @@ def get_news():
 
                 continue
 
-            # dedupe
-
             if title in seen:
 
                 continue
 
             seen.add(title)
-
-            # filter junk HN posts
-
-            if "hacker news" in source_name.lower():
-
-                if "comment" in title.lower():
-
-                    continue
 
             summary = entry.get("summary", "") or entry.get("description", "")
 
@@ -172,7 +164,29 @@ def get_news():
 
             })
 
-    # rank by importance
+    # 🔥 FORCE SOURCE PRIORITY (THIS IS THE FIX)
+
+    source_priority = {
+
+        "MIT Tech Review AI": 100,
+
+        "OpenAI Blog": 90,
+
+        "Ars Technica": 80,
+
+        "TechCrunch AI": 60,
+
+        "The Verge AI": 50,
+
+        "Hacker News AI": 10,
+
+    }
+
+    for s in stories:
+
+        s["score"] += source_priority.get(s["source"], 0)
+
+    # rank
 
     stories = sorted(stories, key=lambda x: x["score"], reverse=True)
 
