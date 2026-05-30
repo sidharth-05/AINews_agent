@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name || 'main' }}   # always resolve to latest main
+          ref: main   # always resolve to latest main
           fetch-depth: 1                           # shallow clone, faster
 
       - uses: actions/setup-python@v5
