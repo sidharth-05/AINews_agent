@@ -10,15 +10,21 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 RSS_FEEDS = [
 
-    "https://techcrunch.com/category/artificial-intelligence/feed/",
+    ("TechCrunch AI", "https://techcrunch.com/category/artificial-intelligence/feed/"),
 
-    "https://www.theverge.com/artificial-intelligence/rss/index.xml",
+    ("The Verge AI", "https://www.theverge.com/artificial-intelligence/rss/index.xml"),
 
-    "https://hnrss.org/newest?q=ai"
+    ("Hacker News AI", "https://hnrss.org/newest?q=ai"),
+
+    ("MIT Tech Review AI", "https://www.technologyreview.com/feed/"),
+
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
+
+    ("OpenAI Blog", "https://openai.com/blog/rss.xml"),
 
 ]
 
-# ---------- CLEAN TEXT ----------
+# ---------- CLEANING ----------
 
 def clean_text(text):
 
@@ -38,9 +44,7 @@ def clean_summary(text):
 
     text = clean_text(text)
 
-    # strip Hacker News / RSS junk
-
-    junk_markers = [
+    junk = [
 
         "Comments URL",
 
@@ -56,11 +60,61 @@ def clean_summary(text):
 
     ]
 
-    for j in junk_markers:
+    for j in junk:
 
         text = text.replace(j, "")
 
     return text.strip()
+
+# ---------- SCORING SYSTEM ----------
+
+def score_story(source, title, summary):
+
+    score = 0
+
+    t = title.lower()
+
+    # source weighting
+
+    if "MIT" in source:
+
+        score += 5
+
+    elif "Ars" in source:
+
+        score += 4
+
+    elif "OpenAI" in source:
+
+        score += 4
+
+    elif "TechCrunch" in source:
+
+        score += 3
+
+    elif "Verge" in source:
+
+        score += 3
+
+    elif "Hacker News" in source:
+
+        score += 1
+
+    # content signals
+
+    if "ai" in t or "artificial intelligence" in t:
+
+        score += 2
+
+    if len(summary) > 150:
+
+        score += 1
+
+    if any(x in t for x in ["openai", "gpt", "google", "meta", "microsoft"]):
+
+        score += 2
+
+    return score
 
 # ---------- FETCH ----------
 
@@ -70,31 +124,33 @@ def get_news():
 
     seen = set()
 
-    for url in RSS_FEEDS:
+    for source_name, url in RSS_FEEDS:
 
         feed = feedparser.parse(url)
 
-        source = feed.feed.get("title", "Unknown Source")
-
-        for entry in feed.entries[:8]:
+        for entry in feed.entries[:6]:
 
             title = clean_text(entry.get("title", ""))
-
-            # hard filters to avoid junk entries
 
             if not title:
 
                 continue
 
-            if "comment" in title.lower():
-
-                continue
+            # dedupe
 
             if title in seen:
 
                 continue
 
             seen.add(title)
+
+            # filter junk HN posts
+
+            if "hacker news" in source_name.lower():
+
+                if "comment" in title.lower():
+
+                    continue
 
             summary = entry.get("summary", "") or entry.get("description", "")
 
@@ -110,9 +166,15 @@ def get_news():
 
                 "link": link,
 
-                "source": source
+                "source": source_name,
+
+                "score": score_story(source_name, title, summary)
 
             })
+
+    # rank by importance
+
+    stories = sorted(stories, key=lambda x: x["score"], reverse=True)
 
     return stories
 
@@ -180,17 +242,17 @@ def send(msg):
 
     })
 
-    print("Telegram response:", response.status_code, response.text)
+    print("Telegram response:", response.status_code)
 
 # ---------- MAIN ----------
 
 if __name__ == "__main__":
 
-    print("Fetching news...")
+    print("Fetching curated AI news...")
 
     stories = get_news()
 
-    print(f"Fetched {len(stories)} clean stories")
+    print(f"Fetched {len(stories)} ranked stories")
 
     messages = format_news(stories)
 
